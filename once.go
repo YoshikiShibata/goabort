@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sync"
 
+	"cloud.google.com/go/spanner"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -37,4 +38,23 @@ func Once(err error) error {
 	calledMap[k] = true
 	log.Printf("%s:%d Aborted return", file, line)
 	return status.Error(codes.Aborted, "replacement")
+}
+
+func OnceForSpanner(err error) error {
+	lock.Lock()
+	defer lock.Unlock()
+
+	_, file, line, ok := runtime.Caller(1)
+	if !ok {
+		panic("Cannot call runtime.Caller(1)")
+	}
+
+	k := caller{file: file, line: line}
+	if calledMap[k] {
+		return err
+	}
+
+	calledMap[k] = true
+	log.Printf("%s:%d Aborted return", file, line)
+	return &spanner.Error{Code: codes.Aborted, Desc: "replacement"}
 }
